@@ -109,15 +109,25 @@ async function generatePDF() {
   doc.text(text, 40, 60, { maxWidth: pageWidth - 80 });
 
   // Download button style
+  const buttonText = 'DOWNLOAD PDF';
+  doc.setFontSize(16);
+
+  // Auto-calculate button width based on text length
+  const textWidth = doc.getTextWidth(buttonText);
+  const paddingX = 40;
+  const buttonWidth = textWidth + paddingX * 2;
+  const buttonHeight = 40;
+
+  const buttonX = (pageWidth - buttonWidth) / 2;
   const buttonY = 260;
+
   doc.setFillColor(0, 102, 204);
-  doc.rect(40, buttonY, 260, 40, 'F');
+  doc.rect(buttonX, buttonY, buttonWidth, buttonHeight, 'F');
 
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
-  doc.text('DOWNLOAD PDF', 70, buttonY + 26);
+  doc.text(buttonText, pageWidth / 2, buttonY + 26, { align: 'center' });
 
-  doc.link(40, buttonY, 260, 40, { url: LINK });
+  doc.link(buttonX, buttonY, buttonWidth, buttonHeight, { url: LINK });
 
   doc.setTextColor(0, 0, 0);
 
