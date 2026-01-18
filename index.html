@@ -1,153 +1,132 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Bulk PDF Generator (CSV + ASIN Scraping)</title>
+  <meta charset="UTF-8" />
+  <title>PDF Tools Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- jsPDF CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
   <style>
-    body { font-family: Arial, sans-serif; padding: 30px; }
-    input, button { margin: 10px 0; }
-    .log { margin-top: 20px; font-size: 14px; white-space: pre-wrap; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+    }
+    .container {
+      max-width: 700px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    label {
+      display: block;
+      margin-top: 12px;
+      font-weight: bold;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+    }
+    button {
+      margin-top: 20px;
+      padding: 12px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
 
-<h2>Bulk PDF Generator (CSV Upload + ASIN Auto Metadata)</h2>
+<div class="container">
+  <h2>5-Page PDF Generator</h2>
 
-<p><strong>CSV format (REQUIRED – rock-solid):</strong></p>
-<pre>ASIN,TITLE,AUTHOR,DOWNLOAD_LINK,PDF_NAME</pre>
+  <label>PDF File Name (without .pdf)</label>
+  <input id="pdfName" placeholder="ebook-download" />
 
-<input type="file" id="csvFile" accept=".csv" />
-<br>
-<button onclick="processCSV()">Generate PDFs</button>
+  <label>Book Title</label>
+  <input id="title" placeholder="Book Title" />
 
-<div style="margin-top:15px;">
-  <progress id="progressBar" value="0" max="100" style="width:300px;"></progress>
-  <span id="progressText">0 / 0</span>
+  <label>Author</label>
+  <input id="author" placeholder="Author Name" />
+
+  <label>Download Link</label>
+  <input id="link" placeholder="https://example.com/download" />
+
+  <label>Amazon ASIN (for cover image)</label>
+  <input id="asin" placeholder="B08XXXXXXX" />
+
+  <button onclick="generatePDF()">Generate PDF</button>
 </div>
 
-<div class="log" id="log"></div>
-
-<h3>Generated Output</h3>
-<ul id="output"></ul>
-
 <script>
-const { jsPDF } = window.jspdf;
+async function generatePDF() {
+  const { jsPDF } = window.jspdf;
 
-async function processCSV() {
-  const file = document.getElementById('csvFile').files[0];
-  if (!file) return alert('Upload a CSV file');
+  const pdfName = document.getElementById('pdfName').value || 'ebook';
+  const TITLE = document.getElementById('title').value;
+  const AUTHOR = document.getElementById('author').value;
+  const LINK = document.getElementById('link').value;
+  const ASIN = document.getElementById('asin').value;
 
-  const zip = new JSZip();
-let total = 0;
-let completed = 0;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
 
-Papa.parse(file, {
-    header: true,
-    skipEmptyLines: true,
-    complete: async (results) => {
-      total = results.data.length;
-      document.getElementById('progressBar').max = total;
-      document.getElementById('progressText').textContent = `0 / ${total}`;
-      for (const row of results.data) {
-        await generatePDFfromASIN(row, zip);
-        completed++;
-        document.getElementById('progressBar').value = completed;
-        document.getElementById('progressText').textContent = `${completed} / ${total}`;
-      }
-      log('DONE: All PDFs generated');
-      zip.generateAsync({ type: 'blob' }).then(content => {
-        saveAs(content, 'bulk_pdfs.zip');
-      });
-    }
+  /* -------- PAGE 1: FULL IMAGE -------- */
+  const imageUrl = `https://images-na.ssl-images-amazon.com/images/P/${ASIN}.01.LZZZZZZZ.jpg`;
+
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.src = imageUrl;
+
+  await new Promise((resolve) => {
+    img.onload = resolve;
+    img.onerror = resolve;
   });
-}
-
-async function generatePDFfromASIN(row, zip) {
-  const ASIN = row.ASIN;
-  const DOWNLOAD_LINK = row.DOWNLOAD_LINK;
-  const PDF_NAME = row.PDF_NAME || ASIN + '.pdf';
-
-  log(`Processing ASIN: ${ASIN} | ${row.TITLE} — ${row.AUTHOR}`);
-
-  // AMAZON IMAGE (NO API)
-  const coverURL = `https://images-na.ssl-images-amazon.com/images/P/${ASIN}.01._SX1000_.jpg`;
-
-  // CSV-ONLY METADATA (NO SCRAPING – STABLE)
-  const title = row.TITLE || 'Untitled';
-  const author = row.AUTHOR || 'Unknown Author';
-
-  let title = 'Unknown Title';
-  let author = 'Unknown Author';
-  let status = 'Success';
 
   try {
-    const html = await fetch(proxyURL).then(r => r.text());
-    title = extract(html, /<span id="productTitle">([\s\S]*?)<\/span>/);
-    author = extract(html, /class="author.*?>(.*?)<\/a>/);
+    doc.addImage(img, 'JPEG', 0, 0, pageWidth, pageHeight);
   } catch (e) {
-    status = 'Failed';
-    log(`Metadata fetch failed for ${ASIN}`);
+    doc.setFontSize(18);
+    doc.text('Image could not be loaded', 40, 80);
   }
 
-  const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
-  const w = pdf.internal.pageSize.getWidth();
-  const h = pdf.internal.pageSize.getHeight();
+  /* -------- PAGE 2: TEXT + DOWNLOAD LINK -------- */
+  doc.addPage();
+  doc.setFontSize(14);
 
-  // PAGE 1 – COVER
-  const img = await loadImage(coverURL);
-  pdf.addImage(img, 'JPEG', 0, 0, w, h);
+  const text = `Download or Read Online (${TITLE}) free ebook (PDF ePub Mobi) - (${AUTHOR})\n\n` +
+    `Ebook PDF (${TITLE}) | EBOOK ONLINE DOWNLOAD\n` +
+    `If you want to download a free ebook, you're in the right place. ` +
+    `Ebook/PDF (${TITLE}) DOWNLOAD in English is available for free here. ` +
+    `Click on the download LINK below to download the Ebook (${TITLE}) PDF Download ` +
+    `in English by (${AUTHOR}) (Author).`;
 
-  // PAGE 2 – TEXT
-  pdf.addPage();
-  pdf.setFontSize(12);
+  doc.text(text, 40, 60, { maxWidth: pageWidth - 80 });
 
-  const text = `Download or Read Online (${title}) free ebook (PDF ePub Mobi) - (${author}) Ebook PDF (${title}) | EBOOK ONLINE DOWNLOAD\n\nIf you want to download a free ebook, you're in the right place. Ebook/PDF (${title}) DOWNLOAD in English is available for free here.\n\nClick on the download LINK below to download the Ebook (${title}) PDF Download in English by (${author}) (Author).`;
+  // Download button style
+  const buttonY = 260;
+  doc.setFillColor(0, 102, 204);
+  doc.rect(40, buttonY, 260, 40, 'F');
 
-  pdf.text(text, 40, 80, { maxWidth: w - 80 });
-  pdf.setTextColor(0, 0, 255);
-  pdf.textWithLink('DOWNLOAD PDF', 40, 280, { url: DOWNLOAD_LINK });
-  pdf.setTextColor(0, 0, 0);
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.text('DOWNLOAD PDF', 70, buttonY + 26);
 
-  // PAGES 3–5 BLANK
-  pdf.addPage();
-  pdf.addPage();
-  pdf.addPage();
+  doc.link(40, buttonY, 260, 40, { url: LINK });
 
-  const pdfBlob = pdf.output('blob');
-  zip.file(PDF_NAME, pdfBlob);
+  doc.setTextColor(0, 0, 0);
 
-  const li = document.createElement('li');
-  li.textContent = `${status} | ${PDF_NAME} | ${title} — ${author}`;
-  li.style.color = status === 'Success' ? 'green' : 'red';
-  document.getElementById('output').appendChild(li);
+  /* -------- PAGE 3–5: BLANK PAGES -------- */
+  doc.addPage();
+  doc.addPage();
+  doc.addPage();
 
-  // OUTPUT LIST
-  const li = document.createElement('li');
-  li.textContent = `Generated: ${PDF_NAME} (ASIN: ${ASIN})`;
-  document.getElementById('output').appendChild(li);
-}
-
-function extract(html, regex) {
-  const match = html.match(regex);
-  return match ? match[1].replace(/\s+/g, ' ').trim() : 'Unknown';
-}
-
-function loadImage(url) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = url;
-  });
-}
-
-function log(msg) {
-  document.getElementById('log').textContent += msg + '\n';
+  doc.save(`${pdfName}.pdf`);
 }
 </script>
 
