@@ -17,8 +17,8 @@
 
 <h2>Bulk PDF Generator (CSV Upload + ASIN Auto Metadata)</h2>
 
-<p><strong>CSV format:</strong></p>
-<pre>ASIN,DOWNLOAD_LINK,PDF_NAME</pre>
+<p><strong>CSV format (REQUIRED – rock-solid):</strong></p>
+<pre>ASIN,TITLE,AUTHOR,DOWNLOAD_LINK,PDF_NAME</pre>
 
 <input type="file" id="csvFile" accept=".csv" />
 <br>
@@ -71,13 +71,14 @@ async function generatePDFfromASIN(row, zip) {
   const DOWNLOAD_LINK = row.DOWNLOAD_LINK;
   const PDF_NAME = row.PDF_NAME || ASIN + '.pdf';
 
-  log(`Processing ASIN: ${ASIN}`);
+  log(`Processing ASIN: ${ASIN} | ${row.TITLE} — ${row.AUTHOR}`);
 
   // AMAZON IMAGE (NO API)
   const coverURL = `https://images-na.ssl-images-amazon.com/images/P/${ASIN}.01._SX1000_.jpg`;
 
-  // METADATA SCRAPING VIA TEXTU.ORG PROXY (NO API KEY)
-  const proxyURL = `https://textuploader.net/proxy?url=https://www.amazon.com/dp/${ASIN}`;
+  // CSV-ONLY METADATA (NO SCRAPING – STABLE)
+  const title = row.TITLE || 'Untitled';
+  const author = row.AUTHOR || 'Unknown Author';
 
   let title = 'Unknown Title';
   let author = 'Unknown Author';
