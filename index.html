@@ -2,89 +2,115 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PDF Generator</title>
+  <title>Bulk PDF Generator (CSV + ASIN Scraping)</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; padding: 30px; }
-    button { padding: 12px 20px; font-size: 16px; cursor: pointer; }
+    input, button { margin: 10px 0; }
+    .log { margin-top: 20px; font-size: 14px; white-space: pre-wrap; }
   </style>
 </head>
 <body>
 
-<h2>PDF Tools Generator</h2>
-<button onclick="generatePDF()">Generate PDF</button>
+<h2>Bulk PDF Generator (CSV Upload + ASIN Auto Metadata)</h2>
+
+<p><strong>CSV format:</strong></p>
+<pre>ASIN,DOWNLOAD_LINK,PDF_NAME</pre>
+
+<input type="file" id="csvFile" accept=".csv" />
+<br>
+<button onclick="processCSV()">Generate PDFs</button>
+
+<div class="log" id="log"></div>
 
 <script>
-async function generatePDF() {
-  const { jsPDF } = window.jspdf;
+const { jsPDF } = window.jspdf;
 
-  // VARIABLES
-  const TITLE = "Your Book Title";
-  const AUTHOR = "Author Name";
-  const DOWNLOAD_LINK = "https://example.com/download";
-  const ASIN = "1401971369";
-  const PDF_NAME = "your-pdf-name.pdf";
+async function processCSV() {
+  const file = document.getElementById('csvFile').files[0];
+  if (!file) return alert('Upload a CSV file');
 
-  const COVER_IMAGE_URL =
-    `https://images-na.ssl-images-amazon.com/images/P/${ASIN}.01.LZZZZZZZ.jpg`;
-
-  const pdf = new jsPDF({
-    orientation: "portrait",
-    unit: "pt",
-    format: "a4"
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete: async (results) => {
+      for (const row of results.data) {
+        await generatePDFfromASIN(row);
+      }
+      log('DONE: All PDFs generated');
+    }
   });
+}
 
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
+async function generatePDFfromASIN(row) {
+  const ASIN = row.ASIN;
+  const DOWNLOAD_LINK = row.DOWNLOAD_LINK;
+  const PDF_NAME = row.PDF_NAME || ASIN + '.pdf';
 
-  // PAGE 1 – FULL COVER IMAGE
-  const img = await loadImage(COVER_IMAGE_URL);
-  pdf.addImage(img, "JPEG", 0, 0, pageWidth, pageHeight);
+  log(`Processing ASIN: ${ASIN}`);
 
-  // PAGE 2 – TEXT + DOWNLOAD LINK
+  // AMAZON IMAGE (NO API)
+  const coverURL = `https://images-na.ssl-images-amazon.com/images/P/${ASIN}.01._SX1000_.jpg`;
+
+  // METADATA SCRAPING VIA TEXTU.ORG PROXY (NO API KEY)
+  const proxyURL = `https://textuploader.net/proxy?url=https://www.amazon.com/dp/${ASIN}`;
+
+  let title = 'Unknown Title';
+  let author = 'Unknown Author';
+
+  try {
+    const html = await fetch(proxyURL).then(r => r.text());
+    title = extract(html, /<span id="productTitle">([\s\S]*?)<\/span>/);
+    author = extract(html, /class="author.*?>(.*?)<\/a>/);
+  } catch (e) {
+    log(`Metadata fetch failed for ${ASIN}`);
+  }
+
+  const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+  const w = pdf.internal.pageSize.getWidth();
+  const h = pdf.internal.pageSize.getHeight();
+
+  // PAGE 1 – COVER
+  const img = await loadImage(coverURL);
+  pdf.addImage(img, 'JPEG', 0, 0, w, h);
+
+  // PAGE 2 – TEXT
   pdf.addPage();
-  pdf.setFont("Helvetica", "normal");
   pdf.setFontSize(12);
 
-  const text = `
-Download or Read Online (${TITLE}) free ebook (PDF ePub Mobi) - (${AUTHOR}) Ebook PDF (${TITLE}) | EBOOK ONLINE DOWNLOAD
+  const text = `Download or Read Online (${title}) free ebook (PDF ePub Mobi) - (${author}) Ebook PDF (${title}) | EBOOK ONLINE DOWNLOAD\n\nIf you want to download a free ebook, you're in the right place. Ebook/PDF (${title}) DOWNLOAD in English is available for free here.\n\nClick on the download LINK below to download the Ebook (${title}) PDF Download in English by (${author}) (Author).`;
 
-If you want to download a free ebook, you're in the right place. Ebook/PDF (${TITLE}) DOWNLOAD in English is available for free here.
-
-Click on the download LINK below to download the Ebook (${TITLE}) PDF Download in English by (${AUTHOR}) (Author).
-  `;
-
-  pdf.text(text.trim(), 40, 80, { maxWidth: pageWidth - 80 });
-
-  // DOWNLOAD BUTTON (LINK)
+  pdf.text(text, 40, 80, { maxWidth: w - 80 });
   pdf.setTextColor(0, 0, 255);
-  pdf.textWithLink(
-    "DOWNLOAD PDF",
-    40,
-    280,
-    { url: DOWNLOAD_LINK }
-  );
-
+  pdf.textWithLink('DOWNLOAD PDF', 40, 280, { url: DOWNLOAD_LINK });
   pdf.setTextColor(0, 0, 0);
 
-  // PAGES 3–5 – BLANK
+  // PAGES 3–5 BLANK
   pdf.addPage();
   pdf.addPage();
   pdf.addPage();
 
-  // SAVE
   pdf.save(PDF_NAME);
 }
 
-// IMAGE LOADER
+function extract(html, regex) {
+  const match = html.match(regex);
+  return match ? match[1].replace(/\s+/g, ' ').trim() : 'Unknown';
+}
+
 function loadImage(url) {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = reject;
     img.src = url;
   });
+}
+
+function log(msg) {
+  document.getElementById('log').textContent += msg + '\n';
 }
 </script>
 
