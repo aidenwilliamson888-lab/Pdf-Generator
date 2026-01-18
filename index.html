@@ -1,101 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PDF Generator – FINAL STABLE VERSION</title>
-
-  <!-- jsPDF -->
+  <meta charset="UTF-8">
+  <title>PDF Generator</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
   <style>
-    body { font-family: Arial, sans-serif; background:#f5f5f5; padding:20px; }
-    .container { max-width:700px; margin:auto; background:#fff; padding:20px; border-radius:8px; }
-    label { display:block; margin-top:12px; font-weight:bold; }
-    input { width:100%; padding:8px; margin-top:6px; }
-    button { margin-top:20px; padding:12px 20px; font-size:16px; cursor:pointer; }
+    body { font-family: Arial, sans-serif; padding: 30px; }
+    button { padding: 12px 20px; font-size: 16px; cursor: pointer; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>PDF Generator (FINAL – 100% Stable)</h2>
 
-    <label>PDF File Name</label>
-    <input id="pdfName" value="ebook" />
+<h2>PDF Tools Generator</h2>
+<button onclick="generatePDF()">Generate PDF</button>
 
-    <label>Title</label>
-    <input id="title" value="Sample Ebook" />
+<script>
+async function generatePDF() {
+  const { jsPDF } = window.jspdf;
 
-    <label>Author</label>
-    <input id="author" value="John Doe" />
+  // VARIABLES
+  const TITLE = "Your Book Title";
+  const AUTHOR = "Author Name";
+  const DOWNLOAD_LINK = "https://example.com/download";
+  const ASIN = "B0ABC12345";
+  const PDF_NAME = "your-pdf-name.pdf";
 
-    <label>Amazon ASIN (Cover Source)</label>
-    <input id="asin" placeholder="B08XXXXXXX" />
+  const COVER_IMAGE_URL =
+    `https://images-na.ssl-images-amazon.com/images/P/${ASIN}.01._SX1000_.jpg`;
 
-    <label>Download Link</label>
-    <input id="link" value="https://example.com" />
+  const pdf = new jsPDF({
+    orientation: "portrait",
+    unit: "pt",
+    format: "a4"
+  });
 
-    <button onclick="generatePDF()">Generate PDF</button>
-  </div>
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
 
-  <script>
-    /* ================= BASE64 IMAGES =================
-       NO external loading
-       NO async
-       NO failures
-    ================================================== */
+  // PAGE 1 – FULL COVER IMAGE
+  const img = await loadImage(COVER_IMAGE_URL);
+  pdf.addImage(img, "JPEG", 0, 0, pageWidth, pageHeight);
 
-    // Base64 COVER IMAGE (placeholder – replace with your real cover)
-    const COVER_IMAGE_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAlgAAAJYCAYAAAC+ZpjcAAAACXBIWXMAAAsSAAALEgHS3X78AAABP0lEQVR4nO3QQQ0AAAgDIN8/9K3hHBQgq9gJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgN8D2AABbQABYwAAAABJRU5ErkJggg==';
+  // PAGE 2 – TEXT + DOWNLOAD LINK
+  pdf.addPage();
+  pdf.setFont("Helvetica", "normal");
+  pdf.setFontSize(12);
 
-    // Base64 DOWNLOAD BUTTON
-    const DOWNLOAD_BUTTON_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAABkCAYAAABn8Y2NAAAACXBIWXMAAAsSAAALEgHS3X78AAABP0lEQVR4nO3QQQ0AAAgDIN8/9K3hHBQgq9gJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgN8D2AABbQABYwAAAABJRU5ErkJggg==';
+  const text = `
+Download or Read Online (${TITLE}) free ebook (PDF ePub Mobi) - (${AUTHOR}) Ebook PDF (${TITLE}) | EBOOK ONLINE DOWNLOAD
 
-    function generatePDF() {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+If you want to download a free ebook, you're in the right place. Ebook/PDF (${TITLE}) DOWNLOAD in English is available for free here.
 
-      const pdfName = document.getElementById('pdfName').value || 'ebook';
-      const TITLE = document.getElementById('title').value || 'TITLE';
-      const AUTHOR = document.getElementById('author').value || 'AUTHOR';
-      const LINK = document.getElementById('link').value || 'https://example.com';
-      const ASIN = document.getElementById('asin').value || '';
+Click on the download LINK below to download the Ebook (${TITLE}) PDF Download in English by (${AUTHOR}) (Author).
+  `;
 
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
+  pdf.text(text.trim(), 40, 80, { maxWidth: pageWidth - 80 });
 
-      /* -------- PAGE 1: FULL COVER IMAGE -------- */
-      doc.addImage(COVER_IMAGE_BASE64, 'PNG', 0, 0, pageWidth, pageHeight);
+  // DOWNLOAD BUTTON (LINK)
+  pdf.setTextColor(0, 0, 255);
+  pdf.textWithLink(
+    "DOWNLOAD PDF",
+    40,
+    280,
+    { url: DOWNLOAD_LINK }
+  );
 
-      /* -------- PAGE 2: TEXT + BUTTON -------- */
-      doc.addPage();
+  pdf.setTextColor(0, 0, 0);
 
-      doc.setFont('Helvetica', 'bold');
-      doc.setFontSize(22);
-      doc.text(`Download or Read Online ${TITLE} free ebook (PDF ePub Mobi) - ${AUTHOR}`, 40, 80, { maxWidth: pageWidth - 80 });
+  // PAGES 3–5 – BLANK
+  pdf.addPage();
+  pdf.addPage();
+  pdf.addPage();
 
-      doc.setFont('Helvetica', 'normal');
-      doc.setFontSize(18);
-      doc.text(`Ebook PDF ${TITLE} | EBOOK ONLINE DOWNLOAD`, 40, 140);
+  // SAVE
+  pdf.save(PDF_NAME);
+}
 
-      doc.setFontSize(16);
-      doc.text(`If you want to download a free ebook, you're in the right place. Ebook/PDF ${TITLE} DOWNLOAD in English is available for free here. Click on the download button below to download the Ebook ${TITLE} PDF Download in English by ${AUTHOR} (Author).`, 40, 190, { maxWidth: pageWidth - 80 });
+// IMAGE LOADER
+function loadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+</script>
 
-      const btnW = 260;
-      const btnH = 90;
-      const x = (pageWidth - btnW) / 2;
-      const y = pageHeight - 200;
-
-      doc.addImage(DOWNLOAD_BUTTON_BASE64, 'PNG', x, y, btnW, btnH);
-      doc.link(x, y, btnW, btnH, { url: LINK });
-
-      /* -------- PAGE 3–5: BLANK -------- */
-      doc.addPage();
-      doc.addPage();
-      doc.addPage();
-
-      doc.save(pdfName + '.pdf');
-    }
-  </script>
 </body>
 </html>
