@@ -24,6 +24,9 @@
 
 <div class="log" id="log"></div>
 
+<h3>Generated Output</h3>
+<ul id="output"></ul>
+
 <script>
 const { jsPDF } = window.jspdf;
 
@@ -92,6 +95,11 @@ async function generatePDFfromASIN(row) {
   pdf.addPage();
 
   pdf.save(PDF_NAME);
+
+  // OUTPUT LIST
+  const li = document.createElement('li');
+  li.textContent = `Generated: ${PDF_NAME} (ASIN: ${ASIN})`;
+  document.getElementById('output').appendChild(li);
 }
 
 function extract(html, regex) {
