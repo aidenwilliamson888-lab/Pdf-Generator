@@ -2,76 +2,99 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Exact PDF Template Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDF Tools Generator</title>
+  <!-- jsPDF CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
-    body { background:#e5e7eb; padding:20px; font-family:Arial, sans-serif; }
-    .controls { max-width:400px; margin-bottom:20px; }
-    input, button { width:100%; padding:10px; margin-top:10px; }
-    button { background:#2563eb; color:white; border:none; border-radius:8px; cursor:pointer; }
-
-    /* PDF COVER TEMPLATE */
-    #pdf-cover {
-      width:794px; height:1123px; /* A4 */
-      background:#0a8fc7;
-      position:relative;
-      color:white;
-      overflow:hidden;
-    }
-    .title-small { position:absolute; top:40px; left:40px; font-size:48px; font-weight:bold; }
-    .title-main { position:absolute; top:110px; left:40px; font-size:96px; font-weight:900; line-height:0.95; }
-    .subtitle { position:absolute; top:520px; left:80px; font-size:32px; color:#facc15; max-width:600px; }
-    .subtitle span { color:#7dd3fc; }
-    .author { position:absolute; bottom:120px; left:40px; font-size:72px; font-weight:900; color:#111; }
-    .publisher { position:absolute; bottom:60px; right:40px; font-size:18px; }
-    .circle {
-      position:absolute;
-      width:700px; height:700px;
-      border:40px solid white;
-      border-radius:50%;
-      top:260px; left:50px;
-      box-sizing:border-box;
-    }
+    body { font-family: Arial, sans-serif; background:#f5f5f5; padding:20px; }
+    .container { max-width:700px; margin:auto; background:#fff; padding:20px; border-radius:8px; }
+    label { display:block; margin-top:12px; font-weight:bold; }
+    input, textarea { width:100%; padding:8px; margin-top:6px; }
+    button { margin-top:20px; padding:12px 20px; font-size:16px; cursor:pointer; }
   </style>
 </head>
 <body>
+  <div class="container">
+    <h2>PDF Generator (5 Pages)</h2>
 
-  <div class="controls">
-    <input id="smallTitle" placeholder="Small Title (EL MÉTODO)" />
-    <input id="mainTitle" placeholder="Main Title (LEAN STARTUP)" />
-    <input id="subtitle" placeholder="Subtitle text" />
+    <!-- Variables -->
+    <label>PDF File Name (without .pdf)</label>
+    <input id="pdfName" placeholder="my-ebook" />
+
+    <label>Title</label>
+    <input id="title" placeholder="Ebook Title" />
+
+    <label>Author</label>
     <input id="author" placeholder="Author Name" />
-    <button onclick="generatePDF()">Generate PDF</button>
-  </div>
 
-  <!-- EXACT TEMPLATE -->
-  <div id="pdf-cover">
-    <div class="title-small" id="vSmallTitle">EL MÉTODO</div>
-    <div class="title-main" id="vMainTitle">LEAN<br>STARTUP</div>
-    <div class="circle"></div>
-    <div class="subtitle" id="vSubtitle">CÓMO CREAR <b>EMPRESAS</b><br>DE ÉXITO UTILIZANDO LA<br><span>INNOVACIÓN CONTINUA</span></div>
-    <div class="author" id="vAuthor">ERIC RIES</div>
-    <div class="publisher">DEUSTO</div>
+    <label>Download Link</label>
+    <input id="link" placeholder="https://example.com/download" />
+
+    <label>Cover Image URL (Full Page – Page 1)</label>
+    <input id="imageUrl" placeholder="https://example.com/cover.jpg" />
+
+    <button onclick="generatePDF()">Generate PDF</button>
   </div>
 
   <script>
     async function generatePDF() {
-      // inject variables
-      if (smallTitle.value) vSmallTitle.innerText = smallTitle.value;
-      if (mainTitle.value) vMainTitle.innerHTML = mainTitle.value.replace(/\n/g,'<br>');
-      if (subtitle.value) vSubtitle.innerText = subtitle.value;
-      if (author.value) vAuthor.innerText = author.value;
-
-      const canvas = await html2canvas(document.getElementById('pdf-cover'), { scale:2 });
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
-
       const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF('p','pt','a4');
-      pdf.addImage(imgData, 'JPEG', 0, 0, 595, 842);
-      pdf.save('cover.pdf');
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+
+      // Variables
+      const pdfName = document.getElementById('pdfName').value || 'ebook';
+      const TITLE = document.getElementById('title').value || 'TITLE';
+      const AUTHOR = document.getElementById('author').value || 'AUTHOR';
+      const LINK = document.getElementById('link').value || 'https://example.com';
+      const imageUrl = document.getElementById('imageUrl').value;
+
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      /* ---------------- Page 1: Full Image ---------------- */
+      if (imageUrl) {
+        const img = await loadImage(imageUrl);
+        doc.addImage(img, 'JPEG', 0, 0, pageWidth, pageHeight);
+      }
+
+      /* ---------------- Page 2: Text + Button Link ---------------- */
+      doc.addPage();
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(14);
+
+      const text = `Download or Read Online ${TITLE} free ebook (PDF ePub Mobi) - ${AUTHOR}\n\n` +
+        `Ebook PDF ${TITLE} | EBOOK ONLINE DOWNLOAD\n` +
+        `If you want to download a free ebook, you're in the right place. ` +
+        `Ebook/PDF ${TITLE} DOWNLOAD in English is available for free here. ` +
+        `Click on the download LINK below to download the Ebook ${TITLE} PDF Download in English by ${AUTHOR} (Author).`;
+
+      doc.text(text, 40, 80, { maxWidth: pageWidth - 80 });
+
+      // Download button (link)
+      doc.setTextColor(0, 0, 255);
+      doc.setFontSize(16);
+      doc.textWithLink('DOWNLOAD PDF', pageWidth / 2 - 70, pageHeight - 120, { url: LINK });
+      doc.setTextColor(0, 0, 0);
+
+      /* ---------------- Pages 3–5: Blank ---------------- */
+      doc.addPage(); // Page 3
+      doc.addPage(); // Page 4
+      doc.addPage(); // Page 5
+
+      /* ---------------- Save PDF ---------------- */
+      doc.save(`${pdfName}.pdf`);
+    }
+
+    function loadImage(url) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = url;
+      });
     }
   </script>
-
 </body>
 </html>
