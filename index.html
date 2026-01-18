@@ -9,136 +9,246 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+    }
+
+    /* Center page */
+    .page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       padding: 20px;
     }
+
+    /* Card */
     .container {
-      max-width: 700px;
-      background: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 480px;
+      background: #ffffff;
+      padding: 28px;
+      border-radius: 14px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
     }
+
+    .container h2 {
+      text-align: center;
+      margin-bottom: 22px;
+      color: #333;
+    }
+
     label {
       display: block;
-      margin-top: 12px;
-      font-weight: bold;
+      margin-top: 14px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #555;
     }
+
     input {
       width: 100%;
-      padding: 8px;
-      margin-top: 5px;
+      padding: 12px;
+      margin-top: 6px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      font-size: 15px;
+      transition: border 0.3s, box-shadow 0.3s;
     }
+
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+    }
+
     button {
-      margin-top: 20px;
-      padding: 12px 20px;
+      width: 100%;
+      margin-top: 26px;
+      padding: 14px;
       font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
       cursor: pointer;
+      color: #fff;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
     }
-  </style>
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+      opacity: 0.95;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+    .preview {
+      margin-top: 24px;
+    }
+
+    .preview h3 {
+      text-align: center;
+      margin-bottom: 12px;
+      color: #444;
+      font-size: 16px;
+    }
+
+    .preview-card {
+      background: #f7f8ff;
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      box-shadow: inset 0 0 0 1px #e0e4ff;
+    }
+
+    .preview-card img {
+      width: 120px;
+      height: 180px;
+      object-fit: cover;
+      border-radius: 8px;
+      background: #ddd;
+      margin-bottom: 12px;
+    }
+
+    .preview-card h4 {
+      margin: 6px 0 2px;
+      font-size: 16px;
+      color: #333;
+    }
+
+    .preview-card p {
+      margin: 0;
+      font-size: 14px;
+      color: #666;
+    }
+
+</style>
 </head>
 <body>
 
-<div class="container">
-  <h2>5-Page PDF Generator</h2>
+  <main class="page">
+    <div class="container">
+      <h2>📘 PDF Tools Generator</h2>
 
-  <label>PDF File Name (without .pdf)</label>
-  <input id="pdfName" placeholder="ebook-download" />
+      <label>PDF File Name</label>
+      <input id="pdfName" placeholder="ebook-download" oninput="updatePreview()" />
 
-  <label>Book Title</label>
-  <input id="title" placeholder="Book Title" />
+      <label>Book Title</label>
+      <input id="title" placeholder="Book Title" oninput="updatePreview()" />
 
-  <label>Author</label>
-  <input id="author" placeholder="Author Name" />
+      <label>Author</label>
+      <input id="author" placeholder="Author Name" oninput="updatePreview()" />
 
-  <label>Download Link</label>
-  <input id="link" placeholder="https://example.com/download" />
+      <label>Download Link</label>
+      <input id="link" placeholder="https://example.com/download" />
 
-  <label>Amazon ASIN (for cover image)</label>
-  <input id="asin" placeholder="B08XXXXXXX" />
+      <label>Amazon ASIN</label>
+      <input id="asin" placeholder="B08XXXXXXX" oninput="updatePreview()" />
 
-  <button onclick="generatePDF()">Generate PDF</button>
-</div>
+      <div class="preview">
+        <h3>Live Preview</h3>
+        <div class="preview-card">
+          <img id="previewImage" src="" alt="Cover Preview" />
+          <h4 id="previewTitle">Book Title</h4>
+          <p id="previewAuthor">by Author Name</p>
+        </div>
+      </div>
 
-<script>
-async function generatePDF() {
-  const { jsPDF } = window.jspdf;
+      <button onclick="generatePDF()">🚀 Generate PDF</button>
+    </div>
+  </main>
 
-  const pdfName = document.getElementById('pdfName').value || 'ebook';
-  const TITLE = document.getElementById('title').value;
-  const AUTHOR = document.getElementById('author').value;
-  const LINK = document.getElementById('link').value;
-  const ASIN = document.getElementById('asin').value;
+  <script>
+    function updatePreview() {
+      const title = document.getElementById('title').value || 'Book Title';
+      const author = document.getElementById('author').value || 'Author Name';
+      const asin = document.getElementById('asin').value;
 
-  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
+      document.getElementById('previewTitle').innerText = title;
+      document.getElementById('previewAuthor').innerText = `by ${author}`;
 
-  /* -------- PAGE 1: FULL IMAGE -------- */
-  const imageUrl = `https://images-na.ssl-images-amazon.com/images/P/${ASIN}.01.LZZZZZZZ.jpg`;
+      if (asin.length > 5) {
+        document.getElementById('previewImage').src = `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`;
+      }
+    }
 
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.src = imageUrl;
+    async function generatePDF() {
+      const { jsPDF } = window.jspdf;
 
-  await new Promise((resolve) => {
-    img.onload = resolve;
-    img.onerror = resolve;
-  });
+      const pdfName = document.getElementById('pdfName').value || 'ebook';
+      const TITLE = document.getElementById('title').value;
+      const AUTHOR = document.getElementById('author').value;
+      const LINK = document.getElementById('link').value;
+      const ASIN = document.getElementById('asin').value;
 
-  try {
-    doc.addImage(img, 'JPEG', 0, 0, pageWidth, pageHeight);
-  } catch (e) {
-    doc.setFontSize(18);
-    doc.text('Image could not be loaded', 40, 80);
-  }
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
 
-  /* -------- PAGE 2: TEXT + DOWNLOAD LINK -------- */
-  doc.addPage();
-  doc.setFontSize(14);
+      /* PAGE 1: COVER IMAGE */
+      const imageUrl = `https://images-na.ssl-images-amazon.com/images/P/${ASIN}.01.LZZZZZZZ.jpg`;
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = imageUrl;
 
-  const text = `Download or Read Online (${TITLE}) free ebook (PDF ePub Mobi) - (${AUTHOR})\n\n` +
-    `Ebook PDF (${TITLE}) | EBOOK ONLINE DOWNLOAD\n` +
-    `If you want to download a free ebook, you're in the right place. ` +
-    `Ebook/PDF (${TITLE}) DOWNLOAD in English is available for free here. ` +
-    `Click on the download LINK below to download the Ebook (${TITLE}) PDF Download ` +
-    `in English by (${AUTHOR}) (Author).`;
+      await new Promise(resolve => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
 
-  doc.text(text, 40, 60, { maxWidth: pageWidth - 80 });
+      try {
+        doc.addImage(img, 'JPEG', 0, 0, pageWidth, pageHeight);
+      } catch (e) {
+        doc.setFontSize(18);
+        doc.text('Cover image could not be loaded', 40, 80);
+      }
 
-  // Download button style
-  const buttonText = 'DOWNLOAD PDF';
-  doc.setFontSize(16);
+      /* PAGE 2: TEXT + DOWNLOAD BUTTON */
+      doc.addPage();
+      doc.setFontSize(14);
 
-  // Auto-calculate button width based on text length
-  const textWidth = doc.getTextWidth(buttonText);
-  const paddingX = 40;
-  const buttonWidth = textWidth + paddingX * 2;
-  const buttonHeight = 40;
+      const text = `Download or Read Online (${TITLE}) free ebook (PDF ePub Mobi) - (${AUTHOR})\n\n` +
+        `Ebook PDF (${TITLE}) | EBOOK ONLINE DOWNLOAD\n` +
+        `If you want to download a free ebook, you're in the right place. ` +
+        `Click the download button below to get the Ebook (${TITLE}) by (${AUTHOR}).`;
 
-  const buttonX = (pageWidth - buttonWidth) / 2;
-  const buttonY = 260;
+      doc.text(text, 40, 60, { maxWidth: pageWidth - 80 });
 
-  doc.setFillColor(0, 102, 204);
-  doc.rect(buttonX, buttonY, buttonWidth, buttonHeight, 'F');
+      const buttonText = 'DOWNLOAD PDF';
+      doc.setFontSize(16);
+      const textWidth = doc.getTextWidth(buttonText);
+      const paddingX = 40;
+      const buttonWidth = textWidth + paddingX * 2;
+      const buttonHeight = 40;
+      const buttonX = (pageWidth - buttonWidth) / 2;
+      const buttonY = 260;
 
-  doc.setTextColor(255, 255, 255);
-  doc.text(buttonText, pageWidth / 2, buttonY + 26, { align: 'center' });
+      doc.setFillColor(102, 126, 234);
+      doc.rect(buttonX, buttonY, buttonWidth, buttonHeight, 'F');
 
-  doc.link(buttonX, buttonY, buttonWidth, buttonHeight, { url: LINK });
+      doc.setTextColor(255, 255, 255);
+      doc.text(buttonText, pageWidth / 2, buttonY + 26, { align: 'center' });
 
-  doc.setTextColor(0, 0, 0);
+      doc.link(buttonX, buttonY, buttonWidth, buttonHeight, { url: LINK });
+      doc.setTextColor(0, 0, 0);
 
-  /* -------- PAGE 3–5: BLANK PAGES -------- */
-  doc.addPage();
-  doc.addPage();
-  doc.addPage();
+      /* PAGE 3–5: BLANK */
+      doc.addPage();
+      doc.addPage();
+      doc.addPage();
 
-  doc.save(`${pdfName}.pdf`);
-}
-</script>
+      doc.save(`${pdfName}.pdf`);
+    }
+  </script>
 
 </body>
 </html>
