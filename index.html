@@ -5,6 +5,8 @@
   <title>Bulk PDF Generator (CSV + ASIN Scraping)</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; padding: 30px; }
     input, button { margin: 10px 0; }
@@ -22,6 +24,11 @@
 <br>
 <button onclick="processCSV()">Generate PDFs</button>
 
+<div style="margin-top:15px;">
+  <progress id="progressBar" value="0" max="100" style="width:300px;"></progress>
+  <span id="progressText">0 / 0</span>
+</div>
+
 <div class="log" id="log"></div>
 
 <h3>Generated Output</h3>
@@ -34,19 +41,32 @@ async function processCSV() {
   const file = document.getElementById('csvFile').files[0];
   if (!file) return alert('Upload a CSV file');
 
-  Papa.parse(file, {
+  const zip = new JSZip();
+let total = 0;
+let completed = 0;
+
+Papa.parse(file, {
     header: true,
     skipEmptyLines: true,
     complete: async (results) => {
+      total = results.data.length;
+      document.getElementById('progressBar').max = total;
+      document.getElementById('progressText').textContent = `0 / ${total}`;
       for (const row of results.data) {
-        await generatePDFfromASIN(row);
+        await generatePDFfromASIN(row, zip);
+        completed++;
+        document.getElementById('progressBar').value = completed;
+        document.getElementById('progressText').textContent = `${completed} / ${total}`;
       }
       log('DONE: All PDFs generated');
+      zip.generateAsync({ type: 'blob' }).then(content => {
+        saveAs(content, 'bulk_pdfs.zip');
+      });
     }
   });
 }
 
-async function generatePDFfromASIN(row) {
+async function generatePDFfromASIN(row, zip) {
   const ASIN = row.ASIN;
   const DOWNLOAD_LINK = row.DOWNLOAD_LINK;
   const PDF_NAME = row.PDF_NAME || ASIN + '.pdf';
@@ -61,12 +81,14 @@ async function generatePDFfromASIN(row) {
 
   let title = 'Unknown Title';
   let author = 'Unknown Author';
+  let status = 'Success';
 
   try {
     const html = await fetch(proxyURL).then(r => r.text());
     title = extract(html, /<span id="productTitle">([\s\S]*?)<\/span>/);
     author = extract(html, /class="author.*?>(.*?)<\/a>/);
   } catch (e) {
+    status = 'Failed';
     log(`Metadata fetch failed for ${ASIN}`);
   }
 
@@ -94,7 +116,13 @@ async function generatePDFfromASIN(row) {
   pdf.addPage();
   pdf.addPage();
 
-  pdf.save(PDF_NAME);
+  const pdfBlob = pdf.output('blob');
+  zip.file(PDF_NAME, pdfBlob);
+
+  const li = document.createElement('li');
+  li.textContent = `${status} | ${PDF_NAME} | ${title} — ${author}`;
+  li.style.color = status === 'Success' ? 'green' : 'red';
+  document.getElementById('output').appendChild(li);
 
   // OUTPUT LIST
   const li = document.createElement('li');
